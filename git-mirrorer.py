@@ -15,14 +15,19 @@ import argparse
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 
+log = logging.getLogger()
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--configuration", help="configuration", type=str, default=None)
-    parser.add_argument("-v", "--verbose", help="verbose", action='store_true', default=False)
+    parser.add_argument("-f", "--configuration",
+                        help="configuration", type=str, default=None)
+    parser.add_argument("-v", "--verbose", help="verbose",
+                        action='store_true', default=False)
     args = parser.parse_args()
     if not args.configuration:
-        print("Configuration required, please specify a valid file path, exiting now")
+        print("Configuration required, please specify a valid "
+              "file path, exiting now")
         sys.exit(EXIT_FAILURE)
     return args
 
@@ -33,11 +38,11 @@ def load_configuration_file(args):
 
 
 def init_global_behavior(args, conf):
-    logger = logging.getLogger()
-    if conf.loglevel:   
-        logger.setLevel(logging.DEBUG)
+    if conf.loglevel:
+        level = level = logging.getLevelName(conf.loglevel)
+        log.setLevel(level)
     if args.verbose:
-        logger.setLevel(logging.DEBUG)
+        log.setLevel(logging.DEBUG)
 
 
 def conf_init():
@@ -52,6 +57,6 @@ def main(conf):
 
 
 if __name__ == '__main__':
-    print("git-mirrorer, 2016")
     conf = conf_init()
+    log.warn("git-mirrorer, 2016")
     main(conf)
