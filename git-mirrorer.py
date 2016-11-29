@@ -11,6 +11,8 @@ import pprint
 import subprocess
 import logging
 import argparse
+import tempfile
+import shutil
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -51,9 +53,21 @@ def conf_init():
     init_global_behavior(args, conf)
     return conf
 
+def do(conf):
+    pass
+
 
 def main(conf):
-    pass
+    # create tmp environmet
+    start_dir = os.getcwd()
+    tmppath = tempfile.mkdtemp()
+    os.chdir(tmppath)
+    try:
+        do(conf)
+    finally:
+        # cleanup the environmet
+        os.chdir(start_dir)
+        shutil.rmtree(tmppath)
 
 
 if __name__ == '__main__':
