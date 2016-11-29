@@ -1,0 +1,9 @@
+[Unit]
+Description=Git Mirror
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/bin/git-mirrorer -f /etc/git-mirrorer/conf.json
+
+[Install]
+WantedBy=multi-user.target

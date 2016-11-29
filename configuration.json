@@ -1,0 +1,14 @@
+{
+    "mirror_list_repo_url" : "http: ",
+
+    "dst_path" : "/usr/share/git-repos",
+
+    "proxy" : {
+        "url" : "http://",
+        "username" : "username",
+        "password" : "password"
+    },
+
+    "loglevel" : "debug"
+
+}
