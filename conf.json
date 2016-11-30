@@ -1,10 +1,10 @@
 {
-    "mirror_list_repo_url" : "http://github.com/hgn/git-mirror-list.git",
+    "mirror_list_repo_url" : "https://scm-01.rsint.net/pfeif_ha/git-mirror-list.git",
 
     "dst_path" : "/tmp/repos",
 
     "proxy" : {
-        "url" : "http://",
+        "url" : "http://proxy.example.com:8080",
         "username" : "username",
         "password" : "password"
     },

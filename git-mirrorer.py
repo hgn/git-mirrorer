@@ -42,17 +42,44 @@ def repo_pull(conf, bare_path):
     cmd_exec(conf, cmd)
     os.chdir(old_dir)
 
+def repo_full_path(conf, repo_name):
+    full_repo_name = "{}.git".format(repo_name)
+    return os.path.join(conf.dst_path, full_repo_name)
+
+def get_current_repo_dirs(conf, repo_conf):
+    repos = dict()
+    for name in os.listdir(conf.dst_path):
+        full_path = os.path.join(conf.dst_path, name)
+        if os.path.isdir(full_path):
+            repos[full_path] = True
+    return repos
+
+def rm_outdated_repos(repos):
+    """ if a repo is removed from the JSON configuration file it
+        will be instantly removed from the cloned repository. This
+        Will ensure a (manual) way to change to change a URL for a
+        given repository """
+    for repo_path, _ in repos.items():
+        if not os.path.isdir(repo_path):
+            log.error("repo not available, but should: {}".format(repo_path))
+        else:
+            log.warning("remove renamed/deleted repository: {}".format(repo_path))
+            shutil.rmtree(repo_path)
+
+
 def process_repo_list(conf, repo_conf):
     log.debug(pp.pformat(repo_conf))
+    currently_cloned_repos = get_current_repo_dirs(conf, repo_conf)
     for repo_name, repo_data in repo_conf['repositories'].items():
-        full_repo_name = "{}.git".format(repo_name)
-        dst_path = os.path.join(conf.dst_path, full_repo_name)
+        dst_path = repo_full_path(conf, repo_name)
         if os.path.isdir(dst_path):
+            log.warning("update repository {}".format(repo_name))
             repo_pull(conf, dst_path)
+            del currently_cloned_repos[dst_path]
         else:
-            log.warning("process {}".format(repo_name))
+            log.warning("clone new repository {}".format(repo_name))
             bare_clone_repo(conf, repo_data['url'], dst_path)
-            #shutil.move(repo_name, target)
+    rm_outdated_repos(currently_cloned_repos)
 
 
 def do(conf):
