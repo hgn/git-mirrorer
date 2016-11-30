@@ -1,5 +1,5 @@
 {
-    "mirror_register_repo" : "https://scm-01.rsint.net/pfeif_ha/git-mirror-register.git",
+    "mirror_register_repo" : "https://example.com/git-mirror-register.git",
 
     "dst_path" : "/tmp/repos",
 

@@ -21,9 +21,14 @@ log = logging.getLogger()
 pp = pprint.PrettyPrinter(indent=2)
 
 def cmd_exec(cmd):
-    out = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT, shell=False)
+    try:
+        out = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT, shell=False)
+    except:
+        log.error("Failed to execute {}".format(cmd))
+        return False
     lines = str(out, 'utf-8')
     for line in lines.splitlines(): log.error(line)
+    return True
 
 def build_prefix(prefix, name):
     if prefix:
@@ -33,8 +38,10 @@ def build_prefix(prefix, name):
 def clone_mirror_list_repo(git_mirror_url, prefix=None):
     out_dir = build_prefix(prefix, "mirror-list")
     cmd = "git clone -vv {} {}".format(git_mirror_url, out_dir)
-    cmd_exec(cmd)
-    return out_dir
+    ok = cmd_exec(cmd)
+    if not ok:
+        return False, None
+    return True, out_dir
 
 def bare_clone_repo(url, name):
     cmd = "git clone --bare -vv {} {}".format(url, name)
@@ -85,10 +92,13 @@ def process_repo_list(prefix, dst_path, repo_conf, ccr):
             bare_clone_repo(repo_data['url'], dst_path)
 
 def repo_processing(conf, prefix, git_mirror_url, ccr):
-    dirname = clone_mirror_list_repo(git_mirror_url, prefix=prefix)
+    ok, dirname = clone_mirror_list_repo(git_mirror_url, prefix=prefix)
+    if not ok:
+        return
     repo_conf_path = os.path.join(dirname, "git-mirror-list.json")
     if not os.path.isfile(repo_conf_path):
-        log.critical("mirror list *not* cloned or git-mirror-list.json not available here {}".format(repo_conf_path))
+        msg = "mirror list *not* cloned or git-mirror-list.json not available here {}"
+        log.critical(msg.format(repo_conf_path))
         sys.exit(EXIT_FAILURE)
     with open(repo_conf_path) as json_data:
         repo_conf = json.load(json_data)
@@ -102,27 +112,23 @@ def process_mirror_list(conf, mirror_repo_conf, ccr):
         responsible = entry['responsible']
         repo_processing(conf, prefix, url, ccr)
 
-
 def process_mirror_register(conf, ccr):
-    mirror_path = clone_mirror_list_repo(conf.mirror_register_repo)
+    ok, mirror_path = clone_mirror_list_repo(conf.mirror_register_repo)
+    if not ok:
+        return
     filename = "git-mirror-register.json"
     mirror_conf_path = os.path.join(mirror_path, filename)
     if not os.path.isfile(mirror_conf_path):
-        log.critical("mirror list *not* cloned or {} not available here {}".format(filename, mirror_conf_path))
+        msg = "mirror list *not* cloned or {} not available here {}"
+        log.critical(msg.format(filename, mirror_conf_path))
         sys.exit(EXIT_FAILURE)
     with open(mirror_conf_path) as json_data:
         mirror_repo_conf = json.load(json_data)
         process_mirror_list(conf, mirror_repo_conf, ccr)
 
-
-
 def do(conf):
     ccr = get_current_repo_dirs(conf.dst_path)
-
-    #prefix, mirror_url = "", "https://scm-01.rsint.net/pfeif_ha/git-mirror-list.git"
-    #repo_processing(conf, prefix, mirror_url, currently_cloned_repos)
     process_mirror_register(conf, ccr)
-
     rm_outdated_repos(ccr)
 
 def parse_args():
@@ -141,7 +147,11 @@ def parse_args():
 
 def load_configuration_file(args):
     with open(args.configuration) as json_data:
-        return addict.Dict(json.load(json_data))
+        try:
+            return addict.Dict(json.load(json_data))
+        except json.decoder.JSONDecodeError:
+            log.error("Configuration file seems corrupt: {}".format(args.configuration))
+            sys.exit(EXIT_FAILURE)
 
 
 def init_global_behavior(args, conf):
