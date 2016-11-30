@@ -20,36 +20,42 @@ EXIT_FAILURE = 1
 log = logging.getLogger()
 pp = pprint.PrettyPrinter(indent=2)
 
-def cmd_exec(conf, cmd):
+def cmd_exec(cmd):
     out = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT, shell=False)
     lines = str(out, 'utf-8')
     for line in lines.splitlines(): log.error(line)
 
-def clone_mirror_list_repo(conf):
-    out_dir = "mirror-list"
-    cmd = "git clone -vv {} {}".format(conf.mirror_list_repo_url, out_dir)
-    cmd_exec(conf, cmd)
+def build_prefix(prefix, name):
+    if prefix:
+        return "{}-{}".format(prefix, name)
+    return name
+
+def clone_mirror_list_repo(git_mirror_url, prefix=None):
+    out_dir = build_prefix(prefix, "mirror-list")
+    cmd = "git clone -vv {} {}".format(git_mirror_url, out_dir)
+    cmd_exec(cmd)
     return out_dir
 
-def bare_clone_repo(conf, url, name):
+def bare_clone_repo(url, name):
     cmd = "git clone --bare -vv {} {}".format(url, name)
-    cmd_exec(conf, cmd)
+    cmd_exec(cmd)
 
-def repo_pull(conf, bare_path):
+def repo_pull(bare_path):
     old_dir = os.getcwd()
     os.chdir(bare_path)
     cmd = "git fetch origin +refs/heads/*:refs/heads/* --prune"
-    cmd_exec(conf, cmd)
+    cmd_exec(cmd)
     os.chdir(old_dir)
 
-def repo_full_path(conf, repo_name):
-    full_repo_name = "{}.git".format(repo_name)
+def repo_full_path(prefix, repo_name):
+    name = build_prefix(prefix, repo_name)
+    full_repo_name = "{}.git".format(name)
     return os.path.join(conf.dst_path, full_repo_name)
 
-def get_current_repo_dirs(conf, repo_conf):
+def get_current_repo_dirs(dst_path):
     repos = dict()
-    for name in os.listdir(conf.dst_path):
-        full_path = os.path.join(conf.dst_path, name)
+    for name in os.listdir(dst_path):
+        full_path = os.path.join(dst_path, name)
         if os.path.isdir(full_path):
             repos[full_path] = True
     return repos
@@ -66,32 +72,58 @@ def rm_outdated_repos(repos):
             log.warning("remove renamed/deleted repository: {}".format(repo_path))
             shutil.rmtree(repo_path)
 
-
-def process_repo_list(conf, repo_conf):
+def process_repo_list(prefix, dst_path, repo_conf, ccr):
     log.debug(pp.pformat(repo_conf))
-    currently_cloned_repos = get_current_repo_dirs(conf, repo_conf)
     for repo_name, repo_data in repo_conf['repositories'].items():
-        dst_path = repo_full_path(conf, repo_name)
+        dst_path = repo_full_path(prefix, repo_name)
         if os.path.isdir(dst_path):
             log.warning("update repository {}".format(repo_name))
-            repo_pull(conf, dst_path)
-            del currently_cloned_repos[dst_path]
+            repo_pull(dst_path)
+            del ccr[dst_path]
         else:
             log.warning("clone new repository {}".format(repo_name))
-            bare_clone_repo(conf, repo_data['url'], dst_path)
-    rm_outdated_repos(currently_cloned_repos)
+            bare_clone_repo(repo_data['url'], dst_path)
 
-
-def do(conf):
-    dirname = clone_mirror_list_repo(conf)
+def repo_processing(conf, prefix, git_mirror_url, ccr):
+    dirname = clone_mirror_list_repo(git_mirror_url, prefix=prefix)
     repo_conf_path = os.path.join(dirname, "git-mirror-list.json")
     if not os.path.isfile(repo_conf_path):
-        log.critical("mirror list *not* cloned, not available here {}".format(repo_conf_path))
+        log.critical("mirror list *not* cloned or git-mirror-list.json not available here {}".format(repo_conf_path))
         sys.exit(EXIT_FAILURE)
     with open(repo_conf_path) as json_data:
         repo_conf = json.load(json_data)
-    process_repo_list(conf, repo_conf)
+        process_repo_list(prefix, conf.dst_path, repo_conf, ccr)
+    shutil.rmtree(dirname)
 
+def process_mirror_list(conf, mirror_repo_conf, ccr):
+    for entry in mirror_repo_conf:
+        url = entry['url']
+        prefix = entry['prefix']
+        responsible = entry['responsible']
+        repo_processing(conf, prefix, url, ccr)
+
+
+def process_mirror_register(conf, ccr):
+    mirror_path = clone_mirror_list_repo(conf.mirror_register_repo)
+    filename = "git-mirror-register.json"
+    mirror_conf_path = os.path.join(mirror_path, filename)
+    if not os.path.isfile(mirror_conf_path):
+        log.critical("mirror list *not* cloned or {} not available here {}".format(filename, mirror_conf_path))
+        sys.exit(EXIT_FAILURE)
+    with open(mirror_conf_path) as json_data:
+        mirror_repo_conf = json.load(json_data)
+        process_mirror_list(conf, mirror_repo_conf, ccr)
+
+
+
+def do(conf):
+    ccr = get_current_repo_dirs(conf.dst_path)
+
+    #prefix, mirror_url = "", "https://scm-01.rsint.net/pfeif_ha/git-mirror-list.git"
+    #repo_processing(conf, prefix, mirror_url, currently_cloned_repos)
+    process_mirror_register(conf, ccr)
+
+    rm_outdated_repos(ccr)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -120,7 +152,7 @@ def init_global_behavior(args, conf):
         log.setLevel(logging.DEBUG)
 
 def conf_check(conf):
-    if not conf.mirror_list_repo_url:
+    if not conf.mirror_register_repo:
         log.error("no mirror repository specified in configuration file")
         sys.exit(EXIT_FAILURE)
     if not os.path.isdir(conf.dst_path):
