@@ -21,9 +21,10 @@ log = logging.getLogger()
 pp = pprint.PrettyPrinter(indent=2)
 
 def cmd_exec(cmd):
+    log.debug("execute: \"{}\"".format(cmd))
     try:
         out = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT, shell=False)
-    except:
+    except subprocess.CalledProcessError:
         log.error("Failed to execute {}".format(cmd))
         return False
     lines = str(out, 'utf-8')
@@ -35,8 +36,8 @@ def build_prefix(prefix, name):
         return "{}-{}".format(prefix, name)
     return name
 
-def clone_mirror_list_repo(git_mirror_url, prefix=None):
-    out_dir = build_prefix(prefix, "mirror-list")
+def clone_mirror_list_repo(git_mirror_url, name=None, prefix=None):
+    out_dir = build_prefix(prefix, name)
     cmd = "git clone -vv {} {}".format(git_mirror_url, out_dir)
     ok = cmd_exec(cmd)
     if not ok:
@@ -92,7 +93,8 @@ def process_repo_list(prefix, dst_path, repo_conf, ccr):
             bare_clone_repo(repo_data['url'], dst_path)
 
 def repo_processing(conf, prefix, git_mirror_url, ccr):
-    ok, dirname = clone_mirror_list_repo(git_mirror_url, prefix=prefix)
+    log.error("process: prefix:{}, url:{}".format(prefix, git_mirror_url))
+    ok, dirname = clone_mirror_list_repo(git_mirror_url, name="mirror-list", prefix=prefix)
     if not ok:
         return
     repo_conf_path = os.path.join(dirname, "git-mirror-list.json")
@@ -113,7 +115,7 @@ def process_mirror_list(conf, mirror_repo_conf, ccr):
         repo_processing(conf, prefix, url, ccr)
 
 def process_mirror_register(conf, ccr):
-    ok, mirror_path = clone_mirror_list_repo(conf.mirror_register_repo)
+    ok, mirror_path = clone_mirror_list_repo(conf.mirror_register_repo, name="register-list")
     if not ok:
         return
     filename = "git-mirror-register.json"
