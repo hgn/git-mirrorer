@@ -2,6 +2,8 @@
 Description=Git Mirror
 
 [Service]
+# Environment="http_proxy=http://USER:PASSWORD@proxy.net:80/"
+# Environment="https_proxy=http://USER:PASSWORD@proxy.net:80/"
 Type=oneshot
 ExecStart=/usr/bin/python3 /usr/bin/git-mirrorer -f /etc/git-mirrorer/conf.json
 
