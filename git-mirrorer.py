@@ -36,9 +36,12 @@ def build_prefix(prefix, name):
         return "{}-{}".format(prefix, name)
     return name
 
-def clone_mirror_list_repo(git_mirror_url, name=None, prefix=None):
+def clone_mirror_list_repo(git_mirror_url, name=None, prefix=None, disable_proxy=False):
     out_dir = build_prefix(prefix, name)
-    cmd = "git clone -vv {} {}".format(git_mirror_url, out_dir)
+    proxy = ""
+    if disable_proxy:
+        proxy = "-c https.proxy=\"\""
+    cmd = "git {} clone -vv {} {}".format(proxy, git_mirror_url, out_dir)
     ok = cmd_exec(cmd)
     if not ok:
         return False, None
@@ -95,8 +98,7 @@ def process_repo_list(prefix, dst_path, repo_conf, ccr):
 def repo_processing(conf, prefix, git_mirror_url, ccr):
     log.error("process: prefix:{}, url:{}".format(prefix, git_mirror_url))
     ok, dirname = clone_mirror_list_repo(git_mirror_url, name="mirror-list", prefix=prefix)
-    if not ok:
-        return
+    if not ok: return False
     repo_conf_path = os.path.join(dirname, "git-mirror-list.json")
     if not os.path.isfile(repo_conf_path):
         msg = "mirror list *not* cloned or git-mirror-list.json not available here {}"
@@ -106,18 +108,21 @@ def repo_processing(conf, prefix, git_mirror_url, ccr):
         repo_conf = json.load(json_data)
         process_repo_list(prefix, conf.dst_path, repo_conf, ccr)
     shutil.rmtree(dirname)
+    return True
 
 def process_mirror_list(conf, mirror_repo_conf, ccr):
     for entry in mirror_repo_conf:
         url = entry['url']
         prefix = entry['prefix']
         responsible = entry['responsible']
-        repo_processing(conf, prefix, url, ccr)
+        ok = repo_processing(conf, prefix, url, ccr)
+        if not ok: return False
+    return True
 
 def process_mirror_register(conf, ccr):
-    ok, mirror_path = clone_mirror_list_repo(conf.mirror_register_repo, name="register-list")
+    ok, mirror_path = clone_mirror_list_repo(conf.mirror_register_repo, name="register-list", disable_proxy=True)
     if not ok:
-        return
+        return False
     filename = "git-mirror-register.json"
     mirror_conf_path = os.path.join(mirror_path, filename)
     if not os.path.isfile(mirror_conf_path):
@@ -126,12 +131,15 @@ def process_mirror_register(conf, ccr):
         sys.exit(EXIT_FAILURE)
     with open(mirror_conf_path) as json_data:
         mirror_repo_conf = json.load(json_data)
-        process_mirror_list(conf, mirror_repo_conf, ccr)
+        ok = process_mirror_list(conf, mirror_repo_conf, ccr)
+        if not ok: return False
+    return True
 
 def do(conf):
     ccr = get_current_repo_dirs(conf.dst_path)
-    process_mirror_register(conf, ccr)
-    rm_outdated_repos(ccr)
+    ok = process_mirror_register(conf, ccr)
+    if ok:
+        rm_outdated_repos(ccr)
 
 def parse_args():
     parser = argparse.ArgumentParser()
