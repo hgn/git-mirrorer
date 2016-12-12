@@ -40,7 +40,7 @@ def clone_mirror_list_repo(git_mirror_url, name=None, prefix=None, disable_proxy
     out_dir = build_prefix(prefix, name)
     proxy = ""
     if disable_proxy:
-        proxy = "-c http.proxy=\"\""
+        proxy = "-c http.proxy="
     cmd = "git {} clone -vv {} {}".format(proxy, git_mirror_url, out_dir)
     ok = cmd_exec(cmd)
     if not ok:
