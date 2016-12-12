@@ -97,7 +97,7 @@ def process_repo_list(prefix, dst_path, repo_conf, ccr):
 
 def repo_processing(conf, prefix, git_mirror_url, ccr):
     log.error("process: prefix:{}, url:{}".format(prefix, git_mirror_url))
-    ok, dirname = clone_mirror_list_repo(git_mirror_url, name="mirror-list", prefix=prefix)
+    ok, dirname = clone_mirror_list_repo(git_mirror_url, name="mirror-list", prefix=prefix, disable_proxy=True)
     if not ok: return False
     repo_conf_path = os.path.join(dirname, "git-mirror-list.json")
     if not os.path.isfile(repo_conf_path):
