@@ -141,11 +141,15 @@ def process_mirror_register(conf, ccr):
         if not ok: return False
     return True
 
+def chowner(path):
+    shutil.chown(path, user="www-data", group="www-data")
+
 def do(conf):
     ccr = get_current_repo_dirs(conf.dst_path)
     ok = process_mirror_register(conf, ccr)
     if ok:
         rm_outdated_repos(ccr)
+    chowner(conf.dst_path)
 
 def parse_args():
     parser = argparse.ArgumentParser()
