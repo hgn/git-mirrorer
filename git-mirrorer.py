@@ -83,6 +83,11 @@ def rm_outdated_repos(repos):
             log.warning("remove renamed/deleted repository: {}".format(repo_path))
             shutil.rmtree(repo_path)
 
+def change_description(orig_url, path):
+    desc_path = os.path.join(path, "description")
+    with open(desc_path, 'w+') as f:
+        f.write("mirror of {}".format(orig_url))
+
 def process_repo_list(prefix, dst_path, repo_conf, ccr):
     log.debug(pp.pformat(repo_conf))
     for repo_name, repo_data in repo_conf['repositories'].items():
@@ -94,6 +99,7 @@ def process_repo_list(prefix, dst_path, repo_conf, ccr):
         else:
             log.warning("clone new repository {}".format(repo_name))
             bare_clone_repo(repo_data['url'], dst_path)
+            change_description(repo_data['url'], dst_path)
 
 def repo_processing(conf, prefix, git_mirror_url, ccr):
     log.error("process: prefix:{}, url:{}".format(prefix, git_mirror_url))
