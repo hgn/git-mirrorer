@@ -86,7 +86,7 @@ def rm_outdated_repos(repos):
 def change_description(orig_url, path):
     desc_path = os.path.join(path, "description")
     with open(desc_path, 'w+') as f:
-        f.write("mirror of {}".format(orig_url))
+        f.write(orig_url)
 
 def process_repo_list(prefix, dst_path, repo_conf, ccr):
     log.debug(pp.pformat(repo_conf))
