@@ -8,6 +8,7 @@ help:
 	@echo
 	@echo "now call sudo systemctl daemon-reload"
 	@echo "  sudo systemctl enable git-mirrorer.timer"
+	@echo "  sudo systemctl enable git-mirrorer.service"
 	@echo "  sudo systemctl start git-mirrorer.timer"
 	@echo "  sudo systemctl status git-mirrorer.service"
 	@echo "  sudo systemctl start git-mirrorer"
