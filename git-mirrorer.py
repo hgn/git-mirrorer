@@ -85,6 +85,9 @@ def rm_outdated_repos(repos):
 
 def change_description(orig_url, path):
     desc_path = os.path.join(path, "description")
+    if not os.access(desc_path, os.W_OK):
+        log.error("path not writable: {}, repo not cloned, outdated?".format(desc_path))
+        return
     with open(desc_path, 'w+') as f:
         f.write(orig_url)
 
